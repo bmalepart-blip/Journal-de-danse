@@ -78,39 +78,47 @@ with col_aj:
 
 with col_ap:
     danses_a_apprendre = st.text_area("Danses à apprendre :", placeholder="Ex: Mémoriser les pas de 'The Wolf'...")
+
 from streamlit_gsheets import GSheetsConnection
 
-# --- 4. ENREGISTREMENT (Version Google Sheets) ---
+# --- 4. ENREGISTREMENT (Version Robuste) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if st.button("Enregistrer les données", use_container_width=True):
     if nom and (selection or danses_a_ajouter or danses_a_apprendre):
-        # 1. Lire les données existantes
         try:
-            existing_data = conn.read(worksheet="Feuille 1", usecols=list(range(6)))
-            existing_data = existing_data.dropna(how="all")
-        except:
-            existing_data = pd.DataFrame(columns=["Date", "Nom", "Lieu", "Danse", "À ajouter", "À apprendre"])
+            # On tente de lire la feuille (vérifie bien que l'onglet s'appelle Feuille 1)
+            # Si ton onglet en bas s'appelle Sheet1, change le mot ci-dessous :
+            nom_onglet = "Feuille 1" 
+            
+            df_existant = conn.read(worksheet=nom_onglet)
+        except Exception:
+            # Si la feuille est vide ou introuvable, on crée un tableau vide
+            df_existant = pd.DataFrame(columns=["Date", "Nom", "Lieu", "Danse", "À ajouter", "À apprendre"])
 
-        # 2. Préparer les nouvelles lignes
-        liste_pour_tableau = selection if selection else ["Note uniquement"]
-        new_rows = pd.DataFrame({
-            "Date": [date_danse.strftime("%d/%m/%Y")] * len(liste_pour_tableau),
-            "Nom": [nom] * len(liste_pour_tableau),
-            "Lieu": [lieu] * len(liste_pour_tableau),
-            "Danse": liste_pour_tableau,
-            "À ajouter": [danses_a_ajouter] * len(liste_pour_tableau),
-            "À apprendre": [danses_a_apprendre] * len(liste_pour_tableau)
+        # Préparation des nouvelles lignes
+        danses_finales = selection if selection else ["Note uniquement"]
+        nouvelles_entrees = pd.DataFrame({
+            "Date": [date_danse.strftime("%d/%m/%Y")] * len(danses_finales),
+            "Nom": [nom] * len(danses_finales),
+            "Lieu": [lieu] * len(danses_finales),
+            "Danse": danses_finales,
+            "À ajouter": [danses_a_ajouter] * len(danses_finales),
+            "À apprendre": [danses_a_apprendre] * len(danses_finales)
         })
 
-        # 3. Fusionner et envoyer vers Google Sheets
-        updated_df = pd.concat([existing_data, new_rows], ignore_index=True)
-        conn.update(worksheet="Feuille 1", data=updated_df)
+        # On ajoute les nouvelles lignes aux anciennes
+        df_final = pd.concat([df_existant, nouvelles_entrees], ignore_index=True)
         
-        st.success(f"C'est envoyé dans ton Google Sheets, {nom} ! 🤠")
+        # ON ENVOIE VERS GOOGLE
+        conn.update(worksheet=nom_onglet, data=df_final)
+        
+        st.success(f"Bravo {nom} ! C'est enregistré dans Google Sheets. 🤠")
         st.balloons()
     else:
         st.error("Remplis au moins ton nom et une information !")
+
+
 
 # --- 5. HISTORIQUE ---
 st.write("---")
