@@ -17,8 +17,7 @@ with col1:
 with col2:
     lieu = st.text_input("Où as-tu dansé ?", placeholder="Ex: Festival, Bar, Salle...")
 
-# --- 2. LISTE DES DANSES ---
-# Ta liste brute
+# --- 2. LISTE DES DANSES (Avec tes ajouts manuels) ---
 brute_danses = [
     "Cotton Eye Joe", "Electric Slide (Man I Feel Like a Woman)", "Footloose", "A Bar Song - Tipsy", 
     "High Horse", "Country as a Boy Can Be", "Fireball", "Nothing But You", "Damn!", "American Kids", 
@@ -51,42 +50,64 @@ brute_danses = [
     "Straight Line", "Stetson", "The feeling", "Shot for shot", "Shake señora", "Homecoming", 
     "Do my thing", "Heather on the hill", "Rattlesnake Kiss", "Get Wild", "Happy Hour", "5,6,7,8", 
     "5 divas", "Hoedown", "Sticks and Stones", "King of Clubs", "Beer Problem", "21 Reasons", 
-    "She’s not afraid", "Blood Sweat and Beer", "Two pina coladas", "Fever Dream", "Oh love"
+    "She’s not afraid", "Blood Sweat and Beer", "Two pina coladas", "Fever Dream", "Oh love", 
+    "No Remorse", "Orion", "Party in the Hills", "Good Lord", "A little bit harder", "Canadian Stomp", 
+    "K is for Kicks", "Alligator Smile", "Delulu", "Any Man of Mine", "Devil's dance floor", 
+    "Dancing in the country", "Cowboy Killer", "Ain't far from it", "Cupid Shuffle", "First Rodeo", 
+    "Burning Love", "Blinding Lights", "Tie me up", "Greenlight", "Traveling Soldier", 
+    "Ain't non love in Oklahoma", "Troubled Waters", "Jerusalema", "More", "Runaway Baby", 
+    "Mesmorised", "Sounds like something I'd do", "Get Funky", "Infectious", "Around the fire", 
+    "Hot Party", "Banana Boat", "I got better", "Jazz it up", "Country girl stomp", "Make it go Krazy", 
+    "Country girl twerk", "Can't help myself", "Heart got teeth", "Lil bit", "Turn all the lights on", 
+    "Love is a game", "Happen to me", "The other side", "Black betty worldwide", "Body and soul", 
+    "Lemon squeezy", "Liar"
 ]
 
-# Tri alphabétique
 liste_danses = sorted(brute_danses)
 
 st.write("---")
 st.subheader("Quelles danses as-tu pratiquées ?")
-
-# Affichage sous forme de multiselect (plus propre pour 158 danses)
 selection = st.multiselect("Recherche et coche tes danses :", liste_danses)
 
-# --- 3. ENREGISTREMENT ---
+# --- 3. NOUVELLES ZONES DE TEXTE ---
+st.write("---")
+col_aj, col_ap = st.columns(2)
+
+with col_aj:
+    danses_a_ajouter = st.text_area("Danses à ajouter (idées) :", placeholder="Ex: Une danse vue en festival...")
+
+with col_ap:
+    danses_a_apprendre = st.text_area("Danses à apprendre :", placeholder="Ex: Mémoriser les pas de 'The Wolf'...")
+
+# --- 4. ENREGISTREMENT ---
 if st.button("Enregistrer les données", use_container_width=True):
-    if nom and selection:
-        # Préparation du tableau
+    # On vérifie qu'il y a au moins un nom et soit une danse, soit une note
+    if nom and (selection or danses_a_ajouter or danses_a_apprendre):
+        
+        # Si aucune danse n'est cochée mais qu'il y a des notes, on crée une ligne de note
+        liste_pour_tableau = selection if selection else ["Note uniquement"]
+        
         nouveau_suivi = pd.DataFrame({
-            "Date": [date_danse.strftime("%d/%m/%Y")] * len(selection),
-            "Nom": [nom] * len(selection),
-            "Lieu": [lieu] * len(selection),
-            "Danse": selection
+            "Date": [date_danse.strftime("%d/%m/%Y")] * len(liste_pour_tableau),
+            "Nom": [nom] * len(liste_pour_tableau),
+            "Lieu": [lieu] * len(liste_pour_tableau),
+            "Danse": liste_pour_tableau,
+            "À ajouter": [danses_a_ajouter] * len(liste_pour_tableau),
+            "À apprendre": [danses_a_apprendre] * len(liste_pour_tableau)
         })
         
-        # Sauvegarde CSV
         fichier = "journal_danse.csv"
         if not os.path.isfile(fichier):
             nouveau_suivi.to_csv(fichier, index=False)
         else:
             nouveau_suivi.to_csv(fichier, mode='a', header=False, index=False)
             
-        st.success(f"Bravo {nom} ! Tes {len(selection)} danses à {lieu if lieu else 'la soirée'} sont enregistrées. ✅")
+        st.success(f"Enregistré avec succès pour {nom} ! ✨")
         st.balloons()
     else:
-        st.error("N'oublie pas d'entrer ton nom et de choisir au moins une danse !")
+        st.error("N'oublie pas d'entrer ton nom et une information à sauvegarder !")
 
-# --- 4. HISTORIQUE ---
+# --- 5. HISTORIQUE ---
 st.write("---")
 if st.checkbox("Afficher l'historique complet"):
     if os.path.exists("journal_danse.csv"):
