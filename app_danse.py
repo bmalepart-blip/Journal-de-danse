@@ -79,45 +79,38 @@ with col_aj:
 with col_ap:
     danses_a_apprendre = st.text_area("Danses à apprendre :", placeholder="Ex: Mémoriser les pas de 'The Wolf'...")
 
-from streamlit_gsheets import GSheetsConnection
-
-# --- 4. ENREGISTREMENT (Version Robuste) ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-
+# --- 4. ENREGISTREMENT SIMPLIFIÉ ---
 if st.button("Enregistrer les données", use_container_width=True):
     if nom and (selection or danses_a_ajouter or danses_a_apprendre):
-        try:
-            # On tente de lire la feuille (vérifie bien que l'onglet s'appelle Feuille 1)
-            # Si ton onglet en bas s'appelle Sheet1, change le mot ci-dessous :
-            nom_onglet = "Feuille 1" 
-            
-            df_existant = conn.read(worksheet=nom_onglet)
-        except Exception:
-            # Si la feuille est vide ou introuvable, on crée un tableau vide
-            df_existant = pd.DataFrame(columns=["Date", "Nom", "Lieu", "Danse", "À ajouter", "À apprendre"])
-
-        # Préparation des nouvelles lignes
-        danses_finales = selection if selection else ["Note uniquement"]
-        nouvelles_entrees = pd.DataFrame({
-            "Date": [date_danse.strftime("%d/%m/%Y")] * len(danses_finales),
-            "Nom": [nom] * len(danses_finales),
-            "Lieu": [lieu] * len(danses_finales),
-            "Danse": danses_finales,
-            "À ajouter": [danses_a_ajouter] * len(danses_finales),
-            "À apprendre": [danses_a_apprendre] * len(danses_finales)
+        # Création de la nouvelle donnée
+        nouvelle_entree = pd.DataFrame({
+            "Date": [date_danse.strftime("%d/%m/%Y")],
+            "Nom": [nom],
+            "Lieu": [lieu],
+            "Danses": [", ".join(selection)],
+            "À ajouter": [danses_a_ajouter],
+            "À apprendre": [danses_a_apprendre]
         })
 
-        # On ajoute les nouvelles lignes aux anciennes
-        df_final = pd.concat([df_existant, nouvelles_entrees], ignore_index=True)
+        # On affiche un aperçu pour que tu puisses faire un copier-coller au cas où
+        st.subheader("✅ Données prêtes à être sauvegardées")
+        st.dataframe(nouvelle_entree)
         
-        # ON ENVOIE VERS GOOGLE
-        conn.update(worksheet=nom_onglet, data=df_final)
+        # Petit bouton bonus pour télécharger le fichier si tu veux le garder sur ton tel
+        csv = nouvelle_entree.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Télécharger le récapitulatif (CSV)",
+            data=csv,
+            file_name=f"danse_{nom}_{date_danse}.csv",
+            mime="text/csv",
+        )
         
-        st.success(f"Bravo {nom} ! C'est enregistré dans Google Sheets. 🤠")
+        st.success("Données traitées ! Pense à télécharger le petit fichier pour garder ton historique parfait.")
         st.balloons()
     else:
-        st.error("Remplis au moins ton nom et une information !")
+        st.error("Remplis ton nom et une info !")
 
+       
 
 
 # --- 5. HISTORIQUE ---
