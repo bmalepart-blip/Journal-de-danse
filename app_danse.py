@@ -78,16 +78,23 @@ with col_aj:
 
 with col_ap:
     danses_a_apprendre = st.text_area("Danses à apprendre :", placeholder="Ex: Mémoriser les pas de 'The Wolf'...")
+from streamlit_gsheets import GSheetsConnection
 
-# --- 4. ENREGISTREMENT ---
+# --- 4. ENREGISTREMENT (Version Google Sheets) ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+
 if st.button("Enregistrer les données", use_container_width=True):
-    # On vérifie qu'il y a au moins un nom et soit une danse, soit une note
     if nom and (selection or danses_a_ajouter or danses_a_apprendre):
-        
-        # Si aucune danse n'est cochée mais qu'il y a des notes, on crée une ligne de note
+        # 1. Lire les données existantes
+        try:
+            existing_data = conn.read(worksheet="Feuille 1", usecols=list(range(6)))
+            existing_data = existing_data.dropna(how="all")
+        except:
+            existing_data = pd.DataFrame(columns=["Date", "Nom", "Lieu", "Danse", "À ajouter", "À apprendre"])
+
+        # 2. Préparer les nouvelles lignes
         liste_pour_tableau = selection if selection else ["Note uniquement"]
-        
-        nouveau_suivi = pd.DataFrame({
+        new_rows = pd.DataFrame({
             "Date": [date_danse.strftime("%d/%m/%Y")] * len(liste_pour_tableau),
             "Nom": [nom] * len(liste_pour_tableau),
             "Lieu": [lieu] * len(liste_pour_tableau),
@@ -95,17 +102,15 @@ if st.button("Enregistrer les données", use_container_width=True):
             "À ajouter": [danses_a_ajouter] * len(liste_pour_tableau),
             "À apprendre": [danses_a_apprendre] * len(liste_pour_tableau)
         })
+
+        # 3. Fusionner et envoyer vers Google Sheets
+        updated_df = pd.concat([existing_data, new_rows], ignore_index=True)
+        conn.update(worksheet="Feuille 1", data=updated_df)
         
-        fichier = "journal_danse.csv"
-        if not os.path.isfile(fichier):
-            nouveau_suivi.to_csv(fichier, index=False)
-        else:
-            nouveau_suivi.to_csv(fichier, mode='a', header=False, index=False)
-            
-        st.success(f"Enregistré avec succès pour {nom} ! ✨")
+        st.success(f"C'est envoyé dans ton Google Sheets, {nom} ! 🤠")
         st.balloons()
     else:
-        st.error("N'oublie pas d'entrer ton nom et une information à sauvegarder !")
+        st.error("Remplis au moins ton nom et une information !")
 
 # --- 5. HISTORIQUE ---
 st.write("---")
